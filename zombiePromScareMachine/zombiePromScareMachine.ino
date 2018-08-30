@@ -1,20 +1,15 @@
-// ---------------------------------------------------------------------------
-// Example NewPing library sketch that does a ping about 20 times per second.
-// ---------------------------------------------------------------------------
+/*
+  This is the Zombie Prom Scare Machine, designed by Edwin Fallwell for 
+  Monroe County Public Library in 2018. To build this, you need an ultrasonic
+  rangefinder, an Adafruit Music Maker shield, and an Arduino. 
 
-/*************************************************** 
-  This is an example for the Adafruit VS1053 Codec Breakout
-
-  Designed specifically to work with the Adafruit VS1053 Codec Breakout 
-  ----> https://www.adafruit.com/products/1381
-
-  Adafruit invests time and resources providing this open source code, 
-  please support Adafruit and open-source hardware by purchasing 
-  products from Adafruit!
-
-  Written by Limor Fried/Ladyada for Adafruit Industries.  
-  BSD license, all text above must be included in any redistribution
- ****************************************************/
+  This item will continously play track002.mp3 until something gets within 30cm. 
+  When this happens, it plays track001.mp3 at a higher volume, then resumes playing 
+  track0002.mp3. For this scare machine, track002 is a loop of zombie moans + track001 is
+  screams! 
+  
+  Based on code written by Limor Fried/Ladyada for Adafruit Industries + the New Ping library by Tim Eckel.  
+*/
 
 // include SPI, MP3, NewPing, and SD libraries
 #include <NewPing.h>
@@ -22,37 +17,27 @@
 #include <Adafruit_VS1053.h>
 #include <SD.h>
 
-// define the pins used
-//#define CLK 13       // SPI Clock, shared with SD card
-//#define MISO 12      // Input data, from VS1053/SD card
-//#define MOSI 11      // Output data, to VS1053/SD card
-// Connect CLK, MISO and MOSI to hardware SPI pins. 
-// See http://arduino.cc/en/Reference/SPI "Connections"
-
-
 // These are the pins used for the music maker shield
 #define SHIELD_RESET  -1      // VS1053 reset pin (unused!)
 #define SHIELD_CS     7      // VS1053 chip select pin (output)
 #define SHIELD_DCS    6      // VS1053 Data/command select pin (output)
-
-// These are common pins between breakout and shield
 #define CARDCS 4     // Card chip select pin
-// DREQ should be an Int pin, see http://arduino.cc/en/Reference/attachInterrupt
 #define DREQ 3       // VS1053 Data request, ideally an Interrupt pin
 
+// And these are the pins used for the ultrasonic sensor. 
 #define TRIGGER_PIN  9  // Arduino pin tied to trigger pin on the ultrasonic sensor.
 #define ECHO_PIN     8  // Arduino pin tied to echo pin on the ultrasonic sensor.
-
-Adafruit_VS1053_FilePlayer musicPlayer = Adafruit_VS1053_FilePlayer(SHIELD_RESET, SHIELD_CS, SHIELD_DCS, DREQ, CARDCS);
 
 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 #define MAX_DISTANCE 200 
 
-NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
+// Our NewPing and VS1053 objects. 
+NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE);
+Adafruit_VS1053_FilePlayer musicPlayer = Adafruit_VS1053_FilePlayer(SHIELD_RESET, SHIELD_CS, SHIELD_DCS, DREQ, CARDCS);
 
 void setup() {
-  Serial.begin(9600); // Open serial monitor at 115200 baud to see ping results.
-  Serial.println("Adafruit VS1053 Simple Test");
+  Serial.begin(9600); 
+  Serial.println("Zombie Prom Scare Machine");
 
   if (! musicPlayer.begin()) { // initialise the music player
      Serial.println(F("Couldn't find VS1053, do you have the right pins defined?"));
@@ -78,24 +63,27 @@ void setup() {
   // audio playing
   musicPlayer.useInterrupt(VS1053_FILEPLAYER_PIN_INT);  // DREQ int
   
-  // Play another file in the background, REQUIRES interrupts!
-  Serial.println(F("Playing track 002"));
+  // Start the sound loop
+  Serial.println(F("Zombie Moans"));
   musicPlayer.startPlayingFile("track002.mp3");
 }
 
 void loop() {
-  delay(50);                     // Wait 50ms between pings (about 20 pings/sec). 29ms should be the shortest delay between pings.
+  delay(50);                     
   int pingDistance = sonar.ping_cm();
   Serial.print("Ping: ");
-  Serial.print(pingDistance); // Send ping, get distance in cm and print result (0 = outside set distance range)
+  Serial.print(pingDistance);
   Serial.println("cm");
 
   if(pingDistance<30 && pingDistance!=0){
     Serial.println("Scary Sound");
+    musicPlayer.setVolume(5,5);
     musicPlayer.playFullFile("track001.mp3");
     Serial.println("Zombie Moans");
+    musicPlayer.setVolume(20,20);
     musicPlayer.startPlayingFile("track002.mp3");
   }
+  
   if (musicPlayer.stopped()) {
     Serial.println("Looping Zombie Moans");
     musicPlayer.startPlayingFile("track002.mp3");
